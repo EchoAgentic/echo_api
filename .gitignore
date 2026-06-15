@@ -1,0 +1,16 @@
+.env
+google-credentials.json
+
+__pycache__/
+echo_A/
+echo_B/
+llama.cpp/
+
+echo_agent.py
+server.py
+test_models.py
+
+*.old.txt
+env.old.txt
+
+health_check_*.json
