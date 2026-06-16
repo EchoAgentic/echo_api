@@ -256,7 +256,7 @@ def chat():
             force_neutral_style=has_active_buttons or (source == "vitality")
         )
 
-        # Injection du prompt système à chaque appel isolé de modèle
+        # ── INJECTION DE GOOGLE SEARCH RETRIEVAL (GROUNDING NATIONNEL) ───────
         def call_gemini(client, model_name):
             return client.models.generate_content(
                 model=model_name,
@@ -264,7 +264,9 @@ def chat():
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
                     system_instruction=system_prompt,
-                    max_output_tokens=output_tokens
+                    max_output_tokens=output_tokens,
+                    # Activation de l'outil de recherche web Google natif
+                    tools=[{"google_search_retrieval": {}}]
                 )
             )
 
