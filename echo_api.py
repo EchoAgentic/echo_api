@@ -70,23 +70,6 @@ def clean_and_parse_json(raw_text):
 
     return {"action": None, "response": text}
 
-# ── COMPILATION DU CONTEXTE CHATEXPERT POUR OPENROUTER ────────────────
-def build_openrouter_messages(system_prompt, historique_reduit, user_message):
-    messages = [{"role": "system", "content": system_prompt}]
-    
-    for msg in historique_reduit:
-        if not isinstance(msg, str) or msg.startswith("__IMAGE__:"):
-            continue
-        clean_content = msg.split(":", 1)[1].strip() if ":" in msg else msg.strip()
-        
-        if msg.startswith("You:") or msg.startswith("Toi:"):
-            messages.append({"role": "user", "content": clean_content})
-        elif msg.startswith("Echo:"):
-            messages.append({"role": "assistant", "content": clean_content})
-            
-    messages.append({"role": "user", "content": user_message})
-    return messages
-
 # ── COMPILATION DES CONTENUS DU CHAT POUR GEMINI ─────────────────────
 def build_gemini_contents(historique_reduit: list, image_b64: str | None, user_message: str, force_neutral_style: bool) -> list:
     contents = []
@@ -147,7 +130,7 @@ def chat():
         user_message     = data.get("message", "")
         calendar_events  = data.get("calendarEvents", {})
         raw_history      = data.get("history", [])
-        user_tier        = data.get("userTier", "free").lower().strip()
+        user_tier        = data.get("userTier", "connected_free").lower().strip()
         source           = data.get("source", "chat").lower().strip()
         image_b64        = data.get("image", None)
         selected_buttons = data.get("selectedButtons", [])
@@ -170,9 +153,9 @@ def chat():
         )
         system_prompt = base_system_prompt
 
-        # Ajustement de la mémoire selon le forfait
-        if user_tier == "free":
-            taille_memoire = 5
+        # Ajustement de la mémoire selon le nouveau forfait
+        if user_tier == "connected_free":
+            taille_memoire = 8
             output_tokens = 1024
         elif user_tier in ["basic", "premium"]:
             taille_memoire = 15
@@ -183,72 +166,66 @@ def chat():
 
         historique_ajuste = raw_history[-taille_memoire:] if len(raw_history) > taille_memoire else raw_history
 
-        # ── EXÉCUTION DU ROUTAGE SELON LE PLAN ───────────────────────────────
-        
-        # FORFAIT GRATUIT -> APPEL SÉCURISÉ OPENROUTER UNIQUE (GEMMA 4 FREE)
-        if user_tier == "free":
-            if not client_openrouter:
-                return jsonify({"action": None, "response": "Client OpenRouter introuvable."}), 500
-            try:
-                print("[FREE] -> OpenRouter (google/gemma-4-26b-a4b:free)")
-                or_messages = build_openrouter_messages(system_prompt, historique_ajuste, user_message)
-                
-                completion = client_openrouter.chat.completions.create(
-                    model="google/gemma-4-26b-a4b:free",
-                    messages=or_messages,
-                    max_tokens=output_tokens
+        # ── EXÉCUTION DU ROUTAGE PAYANT STABLE UNIFIÉ ─────────────────────────
+        if not client_gemini_paid:
+            return jsonify({"action": None, "response": "Configuration d'API payante introuvable."}), 500
+
+        has_active_buttons = len(selected_buttons) > 0
+        gemini_contents = build_gemini_contents(
+            historique_reduit=historique_ajuste, image_b64=image_b64, user_message=user_message,
+            force_neutral_style=has_active_buttons or (source == "vitality")
+        )
+
+        def call_gemini(model_name):
+            return client_gemini_paid.models.generate_content(
+                model=model_name, contents=gemini_contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt, max_output_tokens=output_tokens
                 )
-                response_text = completion.choices[0].message.content
-                return jsonify(clean_and_parse_json(response_text))
-            except Exception as e:
-                print(f"✕ Échec OpenRouter Free : {e}")
-                return jsonify({"action": None, "response": "Mon sillage gratuit prend une pause, réessaie ! 😎"}), 500
-
-        # FORFAITS PAYANTS -> APPELS DIRECTS GEMINI PAYANT
-        else:
-            if not client_gemini_paid:
-                return jsonify({"action": None, "response": "Configuration d'API payante introuvable."}), 500
-
-            has_active_buttons = len(selected_buttons) > 0
-            gemini_contents = build_gemini_contents(
-                historique_reduit=historique_ajuste, image_b64=image_b64, user_message=user_message,
-                force_neutral_style=has_active_buttons or (source == "vitality")
             )
 
-            def call_gemini(model_name):
-                return client_gemini_paid.models.generate_content(
-                    model=model_name, contents=gemini_contents,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction, max_output_tokens=output_tokens
-                    )
-                )
+        # 1️⃣ NOUVEAU FORFAIT CONNECTED_FREE -> RECOURS STABLE SUR LE 2.5 LITE PAYANT
+        if user_tier == "connected_free":
+            try:
+                print("[PAID - CONNECTED_FREE] -> Gemini 2.5 Flash-Lite")
+                r = call_gemini("gemini-2.5-flash-lite")
+                return jsonify(clean_and_parse_json(r.text))
+            except Exception as e:
+                print(f"⚠️ Erreur Connected_Free : {e}")
+                return jsonify({"action": None, "response": "Mon sillage rencontre un remous, réessaie ! 😎"}), 500
 
-            if user_tier in ["basic", "premium"]:
-                try:
-                    print("[PAID] -> Gemini 3.1 Flash-Lite")
-                    r = call_gemini("gemini-3.1-flash-lite")
-                    return jsonify(clean_and_parse_json(r.text))
-                except Exception:
-                    r = call_gemini("gemini-2.5-flash-lite")
-                    return jsonify(clean_and_parse_json(r.text))
+        # 2️⃣ FORFAITS BASIC / PREMIUM
+        elif user_tier in ["basic", "premium"]:
+            try:
+                print("[PAID] -> Gemini 3.1 Flash-Lite")
+                r = call_gemini("gemini-3.1-flash-lite")
+                return jsonify(clean_and_parse_json(r.text))
+            except Exception:
+                r = call_gemini("gemini-2.5-flash-lite")
+                return jsonify(clean_and_parse_json(r.text))
 
-            elif user_tier == "ultra":
-                try:
-                    print("[PAID - ULTRA] -> Gemini 3.1 Flash-Lite")
-                    r = call_gemini("gemini-3.1-flash-lite")
-                    return jsonify(clean_and_parse_json(r.text))
-                except Exception:
-                    r = call_gemini("gemini-2.5-flash")
-                    return jsonify(clean_and_parse_json(r.text))
+        # 3️⃣ FORFAIT ULTRA
+        elif user_tier == "ultra":
+            try:
+                print("[PAID - ULTRA] -> Gemini 3.1 Flash-Lite")
+                r = call_gemini("gemini-3.1-flash-lite")
+                return jsonify(clean_and_parse_json(r.text))
+            except Exception:
+                r = call_gemini("gemini-2.5-flash")
+                return jsonify(clean_and_parse_json(r.text))
 
-            elif user_tier == "founder":
-                try:
-                    print("[PAID - FOUNDER] -> Gemini 3.0 Flash Preview")
-                    r = call_gemini("gemini-3-flash-preview")
-                    return jsonify(clean_and_parse_json(r.text))
-                except Exception:
-                    r = call_gemini("gemini-2.5-flash")
-                    return jsonify(clean_and_parse_json(r.text))
+        # 4️⃣ FORFAIT FOUNDER
+        elif user_tier == "founder":
+            try:
+                print("[PAID - FOUNDER] -> Gemini 3.0 Flash Preview")
+                r = call_gemini("gemini-3-flash-preview")
+                return jsonify(clean_and_parse_json(r.text))
+            except Exception:
+                r = call_gemini("gemini-2.5-flash")
+                return jsonify(clean_and_parse_json(r.text))
+
+        else:
+            return jsonify({"action": None, "response": "Plan utilisateur non reconnu."}), 400
 
     except Exception as e:
         return jsonify({"action": None, "response": f"Erreur critique: {str(e)}"}), 500
