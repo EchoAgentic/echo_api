@@ -258,13 +258,13 @@ def chat():
             force_neutral_style=has_active_buttons or (source == "vitality")
         )
 
-        # ── INJECTION DE GOOGLE SEARCH RETRIEVAL (CORRIGÉ NATIVE) ───────
+        # ── INJECTION DE GOOGLE SEARCH RETRIEVAL (CORRIGÉ ET SÉCURISÉ) ───────
         def call_gemini(client, model_name):
+            # Retrait du response_mime_type strict incompatible avec Flash-Lite + Google Search
             return client.models.generate_content(
                 model=model_name,
                 contents=gemini_contents,
                 config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
                     system_instruction=system_prompt,
                     max_output_tokens=output_tokens,
                     tools=[{"google_search": {}}]
@@ -286,25 +286,31 @@ def chat():
                 try:
                     print("[FREE 1/3] -> Gemini 3.1 Flash-Lite")
                     r = call_gemini(client_gemini_free, "gemini-3.1-flash-lite")
-                    return jsonify(clean_and_parse_json(r.text))
+                    if r and hasattr(r, 'text') and r.text:
+                        return jsonify(clean_and_parse_json(r.text))
+                    else:
+                        print("✕ Gemini 3.1 Free a renvoyé une réponse vide.")
                 except Exception as e:
                     print(f"Echec Gemini 3.1 Free ({e})")
 
-            if client_gemini_free:
                 try:
                     print("[FREE 2/3] -> Gemini 2.5 Flash-Lite")
                     r = call_gemini(client_gemini_free, "gemini-2.5-flash-lite")
-                    return jsonify(clean_and_parse_json(r.text))
+                    if r and hasattr(r, 'text') and r.text:
+                        return jsonify(clean_and_parse_json(r.text))
+                    else:
+                        print("✕ Gemini 2.5 Free a renvoyé une réponse vide.")
                 except Exception as e:
                     print(f"Echec Gemini 2.5 Free ({e})")
 
-            # Filet de secours payant pour les gratuits (limité et sécurisé en RAM RAM)
+            # Filet de secours payant pour les gratuits (sécurisé en mémoire vive)
             if client_gemini_paid:
                 try:
                     print(f"🚨 [FREE -> FILET] Gemini 2.5 Flash-Lite Payant ({current_failovers + 1}/{MAX_FREE_FAILOVERS})")
                     r = call_gemini(client_gemini_paid, "gemini-2.5-flash-lite")
-                    increment_failover_count()
-                    return jsonify(clean_and_parse_json(r.text))
+                    if r and hasattr(r, 'text') and r.text:
+                        increment_failover_count()
+                        return jsonify(clean_and_parse_json(r.text))
                 except Exception as e:
                     print(f"✕ Échec filet de sécurité : {e}")
 
