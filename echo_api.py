@@ -21,9 +21,9 @@ def chat():
         data = request.get_json()
         user_message = data.get("message", "")
 
+        # Configuration minimaliste sans aucun outil externe
         config = types.GenerateContentConfig(
-            max_output_tokens=1024,
-            tools=[{"google_search": {}}]
+            max_output_tokens=1024
         )
 
         response = client.models.generate_content(
