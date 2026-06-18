@@ -1,14 +1,12 @@
-git init
+cd C:\Users\nicog\identity
 git add .
-git commit -m "Deploy to Railway"
-git branch -M main
-git remote add origin https://github.com/EchoAgentic/echo_api.git
-git push -u origin main
+git commit -m "🚀 Auto-deploy: Mise à jour système et quotas"
+git push origin main
 
 
-git init
+cd C:\projetvision\horloge-vivante
 git add .
-git commit -m "Deploy Next.js App securely"
-git branch -M main
-git remote add origin https://github.com/EchoAgentic/horloge-vivante.git
-git push -u origin main -f
+git commit -m "🚀 Auto-deploy: Sécurisation et mise à jour de la passerelle"
+git push origin main
+
+
