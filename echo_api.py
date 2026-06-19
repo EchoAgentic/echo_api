@@ -39,7 +39,7 @@ client_gemini_paid  = genai.Client(api_key=API_KEY_PAID)  if API_KEY_PAID  else 
 client_openrouter   = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=OPENROUTER_API_KEY) if OPENROUTER_API_KEY else None
 client_github       = OpenAI(base_url=GITHUB_BASE_URL,     api_key=GITHUB_API_KEY)     if GITHUB_API_KEY     else None
 client_nvidia       = OpenAI(base_url=NVIDIA_BASE_URL,     api_key=NVIDIA_API_KEY)     if NVIDIA_API_KEY     else None
-client_groq         = OpenAI(base_url=GROQ_BASE_URL,        api_key=GROQ_API_KEY)        if GROQ_API_KEY       else None
+client_groq         = OpenAI(base_url=GROQ_BASE_URL,        api_key=GROQ_API_KEY)        if GROQ_API_KEY        else None
 client_cloudflare   = OpenAI(base_url=CLOUDFLARE_BASE_URL, api_key=CLOUDFLARE_API_TOKEN) if CLOUDFLARE_API_TOKEN else None
 
 # ── FILET DE SÉCURITÉ CONNECTED_FREE ─────────────────────────────────────────
@@ -81,7 +81,7 @@ def normalize_tier(raw: str) -> str:
     cleaned = (raw or "").lower().strip()
     if cleaned in VALID_TIERS:
         return cleaned
-    if cleaned == "free":
+    if cleaned == "free" or cleaned == "connected_free":
         return "connected_free"
     if "founder" in cleaned:
         return "founder"
@@ -181,11 +181,14 @@ def build_gemini_contents(historique_reduit: list, image_b64: str | None, user_m
     return contents
 
 # ── BUILD SYSTEM PROMPT ET PAYLOAD OPENROUTER CONTEXT ─────────────────────────
-def prepare_shared_context(data):
+def prepare_shared_context(data, source_override=None):
     user_message     = data.get("message", "")
     calendar_events  = data.get("calendarEvents", {})
     raw_history      = data.get("history", [])
-    source           = data.get("source", "chat").lower().strip()
+    
+    # Utilise l'override si spécifié explicitement par la route active
+    source           = source_override if source_override else data.get("source", "chat").lower().strip()
+    
     image_b64        = data.get("image", None)
     selected_buttons = data.get("selectedButtons", [])
     current_expenses = data.get("currentExpenses", [])
@@ -250,8 +253,9 @@ def prepare_shared_context(data):
                 pass
             messages_openrouter.append({"role": "assistant", "content": clean_content})
 
+    # 🎯 CORRECTION CRITIQUE DU COPIER-COLLER SUR LE DERNIER MESSAGE USER
     if user_message:
-        messages_openrouter.append({"role": "user", "content": clean_content})
+        messages_openrouter.append({"role": "user", "content": user_message})
 
     return {
         "system_prompt": system_prompt,
@@ -279,7 +283,7 @@ def execute_openai_call(client, model, ctx, temp=0.7, timeout=7.0):
 def chat():
     try:
         data = request.json or {}
-        ctx = prepare_shared_context(data)
+        ctx = prepare_shared_context(data, source_override="chat")
 
         if ctx["user_tier"] == "connected_free":
             current_failovers = get_failover_count()
@@ -330,7 +334,6 @@ def chat():
                 return jsonify(clean_and_parse_json(r.text))
             except Exception as e:
                 print(f"Échec {target_model} Premium ({e})")
-                # Fallback universel payant de secours ultime
                 r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                 return jsonify(clean_and_parse_json(r.text))
 
@@ -343,7 +346,7 @@ def chat():
 def books():
     try:
         data = request.json or {}
-        ctx = prepare_shared_context(data)
+        ctx = prepare_shared_context(data, source_override="books")
 
         if ctx["user_tier"] == "connected_free":
             current_failovers = get_failover_count()
@@ -383,7 +386,19 @@ def books():
                     print(f"Échec Filet Payant Books ({e})")
                     lock_model("gemini-2.5-flash-lite-books")
 
-        return jsonify({"action": None, "response": "Ouf, mon sillage d'écriture sature. Laisse-moi une seconde ! 😎"})
+            return jsonify({"action": None, "response": "Ouf, mon sillage d'écriture sature. Laisse-moi une seconde ! 😎"})
+        
+        # VERSION PAYANTE / SECURE DES LIVRES
+        else:
+            try:
+                print("[BOOKS - PAID] → Gemini 2.5 Flash-Lite (PAID KEY)")
+                r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
+                return jsonify(clean_and_parse_json(r.text))
+            except Exception as e:
+                print(f"Échec Paid Books, fallback immédiat: {e}")
+                r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
+                return jsonify(clean_and_parse_json(r.text))
+
     except Exception as e:
         print(f"Erreur critique /books : {e}")
         return jsonify({"action": None, "response": "Studio d'écriture instable, réessaie !"}), 500
@@ -393,7 +408,7 @@ def books():
 def home():
     try:
         data = request.json or {}
-        ctx = prepare_shared_context(data)
+        ctx = prepare_shared_context(data, source_override="home")
 
         if ctx["user_tier"] == "connected_free":
             current_failovers = get_failover_count()
@@ -433,7 +448,19 @@ def home():
                     print(f"Échec Filet Payant Home ({e})")
                     lock_model("gemini-2.5-flash-lite-home")
 
-        return jsonify({"action": None, "response": "Espace d'accueil surchargé, redonne-moi une seconde ! 😎"})
+            return jsonify({"action": None, "response": "Espace d'accueil surchargé, redonne-moi une seconde ! 😎"})
+        
+        # VERSION PAYANTE / SECURE DE LA HOME
+        else:
+            try:
+                print("[HOME - PAID] → Gemini 2.5 Flash-Lite (PAID KEY)")
+                r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
+                return jsonify(clean_and_parse_json(r.text))
+            except Exception as e:
+                print(f"Échec Paid Home: {e}")
+                r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
+                return jsonify(clean_and_parse_json(r.text))
+
     except Exception as e:
         print(f"Erreur critique /home : {e}")
         return jsonify({"action": None, "response": "Espace d'accueil instable, réessaie !"}), 500
@@ -443,7 +470,7 @@ def home():
 def history():
     try:
         data = request.json or {}
-        ctx = prepare_shared_context(data)
+        ctx = prepare_shared_context(data, source_override="history")
 
         if ctx["user_tier"] == "connected_free":
             current_failovers = get_failover_count()
@@ -483,7 +510,19 @@ def history():
                     print(f"Échec Filet Payant History ({e})")
                     lock_model("gemini-2.5-flash-lite-history")
 
-        return jsonify({"action": None, "response": "Module d'historique saturé, redonne-moi une seconde ! 😎"})
+            return jsonify({"action": None, "response": "Module d'historique saturé, redonne-moi une seconde ! 😎"})
+        
+        # VERSION PAYANTE / SECURE DE L'HISTORIQUE
+        else:
+            try:
+                print("[HISTORY - PAID] → Gemini 2.5 Flash-Lite (PAID KEY)")
+                r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
+                return jsonify(clean_and_parse_json(r.text))
+            except Exception as e:
+                print(f"Échec Paid History: {e}")
+                r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
+                return jsonify(clean_and_parse_json(r.text))
+
     except Exception as e:
         print(f"Erreur critique /history : {e}")
         return jsonify({"action": None, "response": "Historique instable, réessaie !"}), 500
