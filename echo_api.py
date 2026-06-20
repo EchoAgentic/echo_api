@@ -18,7 +18,7 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# â”€â”€ CLÃ‰S D'API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── CLÉS D'API ────────────────────────────────────────────────────────────────
 API_KEY_FREE          = os.getenv("API_KEY_FREE", "").strip()
 API_KEY_PAID          = os.getenv("API_KEY_PAID", "").strip()
 OPENROUTER_API_KEY    = os.getenv("OPENROUTER_API_KEY", "").strip()
@@ -34,7 +34,7 @@ NVIDIA_BASE_URL     = "https://integrate.api.nvidia.com/v1"
 GROQ_BASE_URL       = "https://api.groq.com/openai/v1"
 CLOUDFLARE_BASE_URL = f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1"
 
-# â”€â”€ CLIENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── CLIENTS ───────────────────────────────────────────────────────────────────
 client_gemini_free  = genai.Client(api_key=API_KEY_FREE)  if API_KEY_FREE  else None
 client_gemini_paid  = genai.Client(api_key=API_KEY_PAID)  if API_KEY_PAID  else None
 client_openrouter   = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=OPENROUTER_API_KEY) if OPENROUTER_API_KEY else None
@@ -43,7 +43,7 @@ client_nvidia       = OpenAI(base_url=NVIDIA_BASE_URL,     api_key=NVIDIA_API_KE
 client_groq         = OpenAI(base_url=GROQ_BASE_URL,        api_key=GROQ_API_KEY)       if GROQ_API_KEY        else None
 client_cloudflare   = OpenAI(base_url=CLOUDFLARE_BASE_URL, api_key=CLOUDFLARE_API_TOKEN) if CLOUDFLARE_API_TOKEN else None
 
-# â”€â”€ FILET DE SÃ‰CURITÃ‰ CONNECTED_FREE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── FILET DE SÉCURITÉ CONNECTED_FREE ─────────────────────────────────────────
 GLOBAL_FAILOVER_MEMORY_COUNT = 0
 MAX_FREE_FAILOVERS = 200
 
@@ -54,16 +54,16 @@ def get_failover_count():
 def increment_failover_count():
     global GLOBAL_FAILOVER_MEMORY_COUNT
     GLOBAL_FAILOVER_MEMORY_COUNT += 1
-    print(f"âš ï¸ [FAILOVER FILET] {GLOBAL_FAILOVER_MEMORY_COUNT} / {MAX_FREE_FAILOVERS}")
+    print(f"⚠️ [FAILOVER FILET] {GLOBAL_FAILOVER_MEMORY_COUNT} / {MAX_FREE_FAILOVERS}")
 
-# â”€â”€ GESTION DES LOCKS DE MODÃˆLES (60 SECONDES) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── GESTION DES LOCKS DE MODÈLES (60 SECONDES) ────────────────────────────────
 MODELS_LOCK_REGISTRY = {}
 
 def is_model_locked(model_name: str) -> bool:
     lock_time = MODELS_LOCK_REGISTRY.get(model_name)
     if lock_time:
         if datetime.now() < lock_time:
-            print(f"ðŸ”’ [CIRCUIT BREAKER] {model_name} bloquÃ© pour encore {(lock_time - datetime.now()).total_seconds():.1f}s")
+            print(f"🔒 [CIRCUIT BREAKER] {model_name} bloqué pour encore {(lock_time - datetime.now()).total_seconds():.1f}s")
             return True
         else:
             del MODELS_LOCK_REGISTRY[model_name]
@@ -71,9 +71,9 @@ def is_model_locked(model_name: str) -> bool:
 
 def lock_model(model_name: str):
     MODELS_LOCK_REGISTRY[model_name] = datetime.now() + timedelta(seconds=60)
-    print(f"ðŸš¨ [LOCK ACTIVE] {model_name} mis hors circuit pendant 60 secondes.")
+    print(f"🚨 [LOCK ACTIVE] {model_name} mis hors circuit pendant 60 secondes.")
 
-# â”€â”€ NORMALISATION DU TIER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── NORMALISATION DU TIER ─────────────────────────────────────────────────────
 VALID_TIERS = {"connected_free", "basic", "premium", "ultra", "founder"}
 
 def normalize_tier(raw: str) -> str:
@@ -84,10 +84,10 @@ def normalize_tier(raw: str) -> str:
     if "ultra"   in cleaned: return "ultra"
     if "premium" in cleaned: return "premium"
     if "basic"   in cleaned: return "basic"
-    print(f"[WARN] Tier inconnu '{cleaned}' â†’ connected_free")
+    print(f"[WARN] Tier inconnu '{cleaned}' → connected_free")
     return "connected_free"
 
-# â”€â”€ JSON PARSER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── JSON PARSER ───────────────────────────────────────────────────────────────
 def clean_and_parse_json(raw_text):
     text = raw_text.strip()
     if text.startswith("```json"): text = text[7:]
@@ -123,7 +123,7 @@ def clean_and_parse_json(raw_text):
 
     raise ValueError("Reponse vide.")
 
-# â”€â”€ BUILD GEMINI CONTENTS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── BUILD GEMINI CONTENTS ─────────────────────────────────────────────────────
 def build_gemini_contents(historique_reduit: list, image_b64: str | None, user_message: str, force_neutral_style: bool) -> list:
     contents = []
     for msg in historique_reduit:
@@ -137,7 +137,7 @@ def build_gemini_contents(historique_reduit: list, image_b64: str | None, user_m
                 parsed = json.loads(clean_content)
                 clean_content = parsed.get("response", clean_content)
             except Exception: pass
-            if force_neutral_style: clean_content = "[Analyse technique archivÃ©e]"
+            if force_neutral_style: clean_content = "[Analyse technique archivée]"
             contents.append({"role": "model", "parts": [types.Part.from_text(text=clean_content)]})
 
     last_parts = []
@@ -147,16 +147,16 @@ def build_gemini_contents(historique_reduit: list, image_b64: str | None, user_m
             mime_type = header.split(":")[1].split(";")[0]
             raw_bytes = base64.b64decode(b64data)
             last_parts.append(types.Part.from_bytes(data=raw_bytes, mime_type=mime_type))
-            print(f"[IMAGE] InjectÃ©e : {mime_type}, {len(raw_bytes)} bytes")
+            print(f"[IMAGE] Injectée : {mime_type}, {len(raw_bytes)} bytes")
         except Exception as e:
             print(f"[WARN] Image decode error : {e}")
 
-    text_to_send = user_message or "Analyse cette image et dÃ©cris ce que tu vois."
+    text_to_send = user_message or "Analyse cette image et décris ce que tu vois."
     last_parts.append(types.Part.from_text(text=text_to_send))
     contents.append({"role": "user", "parts": last_parts})
     return contents
 
-# â”€â”€ PREPARE SHARED CONTEXT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── PREPARE SHARED CONTEXT ────────────────────────────────────────────────────
 def prepare_shared_context(data, source_override=None):
     user_message     = data.get("message", "")
     calendar_events  = data.get("calendarEvents", {})
@@ -229,7 +229,7 @@ def prepare_shared_context(data, source_override=None):
         "user_tier": user_tier,
     }
 
-# â”€â”€ EXÃ‰CUTEURS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── EXÉCUTEURS ────────────────────────────────────────────────────────────────
 def execute_gemini_call(client, model, ctx):
     return client.models.generate_content(
         model=model, contents=ctx["gemini_contents"],
@@ -246,16 +246,16 @@ def execute_openai_call(client, model, ctx, temp=0.7, timeout=7.0):
     )
     return res.choices[0].message.content
 
-# â”€â”€ ROUTE /export â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── ROUTE /export ─────────────────────────────────────────────────────────────
 @app.route("/export", methods=["POST"])
 def export_route():
     """
-    ReÃ§oit : { format: "pdf"|"docx"|"epub"|"txt", title: str, html: str }
-    Retourne : fichier binaire tÃ©lÃ©chargeable (PDF, DOCX, EPUB) ou texte (TXT)
+    Reçoit : { format: "pdf"|"docx"|"epub"|"txt", title: str, html: str }
+    Retourne : fichier binaire téléchargeable (PDF, DOCX, EPUB) ou texte (TXT)
     """
     return handle_export()
 
-# â”€â”€ ROUTE /chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── ROUTE /chat ───────────────────────────────────────────────────────────────
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
@@ -265,56 +265,56 @@ def chat():
         if ctx["user_tier"] == "connected_free":
             current_failovers = get_failover_count()
             if current_failovers >= MAX_FREE_FAILOVERS:
-                return jsonify({"action": None, "response": "Ouf, mon sillage sature sous l'affluence. Laisse-moi une petite seconde ! ðŸ˜Ž"})
+                return jsonify({"action": None, "response": "Ouf, mon sillage sature sous l'affluence. Laisse-moi une petite seconde ! 😎"})
 
             model_1 = "gemini-3.1-flash-lite"
             if client_gemini_free and not is_model_locked(model_1):
                 try:
-                    print("[CHAT - FREE 1/3] â†’ Gemini 3.1 Flash-Lite (FREE KEY)")
+                    print("[CHAT - FREE 1/3] → Gemini 3.1 Flash-Lite (FREE KEY)")
                     r = execute_gemini_call(client_gemini_free, model_1, ctx)
                     return jsonify(clean_and_parse_json(r.text))
                 except Exception as e:
-                    print(f"Ã‰chec {model_1} ({e})")
+                    print(f"Échec {model_1} ({e})")
                     lock_model(model_1)
 
             model_2 = "gemini-2.5-flash-lite"
             if client_gemini_free and not is_model_locked(model_2):
                 try:
-                    print("[CHAT - FREE 2/3] â†’ Gemini 2.5 Flash-Lite (FREE KEY)")
+                    print("[CHAT - FREE 2/3] → Gemini 2.5 Flash-Lite (FREE KEY)")
                     r = execute_gemini_call(client_gemini_free, model_2, ctx)
                     return jsonify(clean_and_parse_json(r.text))
                 except Exception as e:
-                    print(f"Ã‰chec {model_2} ({e})")
+                    print(f"Échec {model_2} ({e})")
                     lock_model(model_2)
 
             if client_gemini_paid and not is_model_locked("gemini-2.5-flash-lite-paid"):
                 try:
-                    print(f"[CHAT - FREE 3/3 FILET] â†’ Gemini 2.5 Flash-Lite (PAID KEY) ({current_failovers + 1}/{MAX_FREE_FAILOVERS})")
+                    print(f"[CHAT - FREE 3/3 FILET] → Gemini 2.5 Flash-Lite (PAID KEY) ({current_failovers + 1}/{MAX_FREE_FAILOVERS})")
                     r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                     increment_failover_count()
                     return jsonify(clean_and_parse_json(r.text))
                 except Exception as e:
-                    print(f"Ã‰chec Filet Payant ({e})")
+                    print(f"Échec Filet Payant ({e})")
                     lock_model("gemini-2.5-flash-lite-paid")
 
-            return jsonify({"action": None, "response": "Ouf, mon sillage sature. Laisse-moi une petite seconde ! ðŸ˜Ž"})
+            return jsonify({"action": None, "response": "Ouf, mon sillage sature. Laisse-moi une petite seconde ! 😎"})
 
         else:
             target_model = "gemini-3.5-flash" if ctx["user_tier"] == "founder" else "gemini-3.1-flash-lite"
             try:
-                print(f"[CHAT - PAID] â†’ {target_model}")
+                print(f"[CHAT - PAID] → {target_model}")
                 r = execute_gemini_call(client_gemini_paid, target_model, ctx)
                 return jsonify(clean_and_parse_json(r.text))
             except Exception as e:
-                print(f"Ã‰chec {target_model} Premium ({e})")
+                print(f"Échec {target_model} Premium ({e})")
                 r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                 return jsonify(clean_and_parse_json(r.text))
 
     except Exception as e:
         print(f"Erreur critique /chat : {e}")
-        return jsonify({"action": None, "response": "SystÃ¨me instable, rÃ©essaie ton message !"}), 500
+        return jsonify({"action": None, "response": "Système instable, réessaie ton message !"}), 500
 
-# â”€â”€ ROUTE /books â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── ROUTE /books ──────────────────────────────────────────────────────────────
 @app.route("/books", methods=["POST"])
 def books():
     try:
@@ -325,33 +325,33 @@ def books():
         buttons    = data.get("selectedButtons", [])
         book_title = data.get("bookTitle", "")
 
-        # DÃ©tection injection
-        INJECT_KEYWORDS = ["inject", "injecte", "insÃ¨re", "Ã©cris ici", "write here", "add this"]
+        # Détection injection
+        INJECT_KEYWORDS = ["inject", "injecte", "insère", "écris ici", "write here", "add this"]
         wants_inject = any(kw in message.lower() for kw in INJECT_KEYWORDS)
 
-        # SystÃ¨me prompt selon mode sÃ©lectionnÃ©
+        # Système prompt selon mode sélectionné
         mode_prompts = {
-            "creative": "Tu es en mode CrÃ©atif. GÃ©nÃ¨re du contenu littÃ©raire original avec des mÃ©taphores et un style soignÃ©.",
-            "ideas":    "Tu es en mode IdÃ©es. Propose des pistes narratives, rebondissements et dÃ©veloppements possibles.",
-            "critical": "Tu es en mode Critique. Analyse le texte avec rigueur : rythme, cohÃ©rence, clartÃ©, redondances.",
+            "creative": "Tu es en mode Créatif. Génère du contenu littéraire original avec des métaphores et un style soigné.",
+            "ideas":    "Tu es en mode Idées. Propose des pistes narratives, rebondissements et développements possibles.",
+            "critical": "Tu es en mode Critique. Analyse le texte avec rigueur : rythme, cohérence, clarté, redondances.",
         }
         active_mode      = buttons[0] if buttons else None
-        mode_instruction = mode_prompts.get(active_mode, "Tu es un assistant d'Ã©criture crÃ©atif et polyvalent.")
+        mode_instruction = mode_prompts.get(active_mode, "Tu es un assistant d'écriture créatif et polyvalent.")
 
         inject_instruction = ""
         if wants_inject:
             inject_instruction = (
                 "\n\nL'utilisateur veut que tu INJECTES du texte directement dans son livre. "
-                "GÃ©nÃ¨re le passage demandÃ© et termine ta rÃ©ponse avec exactement ce marqueur :\n"
+                "Génère le passage demandé et termine ta réponse avec exactement ce marqueur :\n"
                 "<<<INJECT_TEXT>>>\n"
-                "[ici le texte Ã  injecter, texte propre sans balises HTML]\n"
+                "[ici le texte à injecter, texte propre sans balises HTML]\n"
                 "<<<END_INJECT>>>"
             )
 
         system_prompt = (
             f"{mode_instruction}{inject_instruction}\n\n"
             f"Tu travailles sur le livre : \"{book_title}\".\n"
-            "RÃ©ponds en moins de 400 mots sauf si un long passage est demandÃ©. Sois direct, utile et Ã©lÃ©gant."
+            "Réponds en moins de 400 mots sauf si un long passage est demandé. Sois direct, utile et élégant."
         )
 
         # Construction historique Gemini
@@ -367,7 +367,7 @@ def books():
         client = client_gemini_paid if tier in ("premium", "ultra", "founder") else client_gemini_free
         model  = "gemini-2.0-flash" if tier in ("premium", "ultra", "founder") else "gemini-2.0-flash-lite"
 
-        # Filet de sÃ©curitÃ© si client_gemini_free absent
+        # Filet de sécurité si client_gemini_free absent
         if client is None:
             client = client_gemini_paid
             model  = "gemini-2.0-flash-lite"
@@ -383,13 +383,13 @@ def books():
         )
         full_text = resp.text or ""
 
-        # Parser l'injection si prÃ©sente
+        # Parser l'injection si présente
         if wants_inject and "<<<INJECT_TEXT>>>" in full_text:
             parts      = full_text.split("<<<INJECT_TEXT>>>")
             response   = parts[0].strip()
             inject_raw = parts[1].split("<<<END_INJECT>>>")[0].strip() if len(parts) > 1 else ""
             return jsonify({
-                "response":    response or "Voici le passage â€” je l'injecte dans ton chapitre.",
+                "response":    response or "Voici le passage — je l'injecte dans ton chapitre.",
                 "inject":      True,
                 "inject_text": inject_raw,
                 "action":      None,
@@ -399,9 +399,9 @@ def books():
 
     except Exception as e:
         print(f"Erreur critique /books : {e}")
-        return jsonify({"response": "Studio d'Ã©criture instable, rÃ©essaie !", "inject": False, "action": None}), 500
+        return jsonify({"response": "Studio d'écriture instable, réessaie !", "inject": False, "action": None}), 500
 
-# â”€â”€ ROUTE /home â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── ROUTE /home ───────────────────────────────────────────────────────────────
 @app.route("/home", methods=["POST"])
 def home():
     try:
@@ -411,55 +411,55 @@ def home():
         if ctx["user_tier"] == "connected_free":
             current_failovers = get_failover_count()
             if current_failovers >= MAX_FREE_FAILOVERS:
-                return jsonify({"action": None, "response": "Mon sillage d'accueil est au repos forcÃ© ! ðŸ˜Ž"})
+                return jsonify({"action": None, "response": "Mon sillage d'accueil est au repos forcé ! 😎"})
 
             model_1 = "deepseek/DeepSeek-V3-0324"
             if client_github and not is_model_locked(model_1):
                 try:
-                    print("[HOME - FREE 1/3] â†’ DeepSeek V3 (GitHub)")
+                    print("[HOME - FREE 1/3] → DeepSeek V3 (GitHub)")
                     res = execute_openai_call(client_github, model_1, ctx)
                     return jsonify(clean_and_parse_json(res))
                 except Exception as e:
-                    print(f"Ã‰chec {model_1} ({e})")
+                    print(f"Échec {model_1} ({e})")
                     lock_model(model_1)
 
             model_2 = "moonshotai/kimi-k2.6"
             if client_nvidia and not is_model_locked(model_2):
                 try:
-                    print("[HOME - FREE 2/3] â†’ Kimi K2.6 (NVIDIA)")
+                    print("[HOME - FREE 2/3] → Kimi K2.6 (NVIDIA)")
                     res = execute_openai_call(client_nvidia, model_2, ctx)
                     return jsonify(clean_and_parse_json(res))
                 except Exception as e:
-                    print(f"Ã‰chec {model_2} ({e})")
+                    print(f"Échec {model_2} ({e})")
                     lock_model(model_2)
 
             if client_gemini_paid and not is_model_locked("gemini-2.5-flash-lite-home"):
                 try:
-                    print("[HOME - FREE 3/3 FILET] â†’ Gemini 2.5 Flash-Lite (PAID KEY)")
+                    print("[HOME - FREE 3/3 FILET] → Gemini 2.5 Flash-Lite (PAID KEY)")
                     r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                     increment_failover_count()
                     return jsonify(clean_and_parse_json(r.text))
                 except Exception as e:
-                    print(f"Ã‰chec Filet Payant Home ({e})")
+                    print(f"Échec Filet Payant Home ({e})")
                     lock_model("gemini-2.5-flash-lite-home")
 
-            return jsonify({"action": None, "response": "Espace d'accueil surchargÃ©, redonne-moi une seconde ! ðŸ˜Ž"})
+            return jsonify({"action": None, "response": "Espace d'accueil surchargé, redonne-moi une seconde ! 😎"})
 
         else:
             try:
-                print("[HOME - PAID] â†’ Gemini 2.5 Flash-Lite (PAID KEY)")
+                print("[HOME - PAID] → Gemini 2.5 Flash-Lite (PAID KEY)")
                 r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                 return jsonify(clean_and_parse_json(r.text))
             except Exception as e:
-                print(f"Ã‰chec Paid Home: {e}")
+                print(f"Échec Paid Home: {e}")
                 r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                 return jsonify(clean_and_parse_json(r.text))
 
     except Exception as e:
         print(f"Erreur critique /home : {e}")
-        return jsonify({"action": None, "response": "Espace d'accueil instable, rÃ©essaie !"}), 500
+        return jsonify({"action": None, "response": "Espace d'accueil instable, réessaie !"}), 500
 
-# â”€â”€ ROUTE /history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── ROUTE /history ────────────────────────────────────────────────────────────
 @app.route("/history", methods=["POST"])
 def history():
     try:
@@ -469,56 +469,56 @@ def history():
         if ctx["user_tier"] == "connected_free":
             current_failovers = get_failover_count()
             if current_failovers >= MAX_FREE_FAILOVERS:
-                return jsonify({"action": None, "response": "Les archives historiques sont momentanÃ©ment inaccessibles ! ðŸ˜Ž"})
+                return jsonify({"action": None, "response": "Les archives historiques sont momentanément inaccessibles ! 😎"})
 
             model_1 = "groq/compound"
             if client_groq and not is_model_locked(model_1):
                 try:
-                    print("[HISTORY - FREE 1/3] â†’ Groq Compound")
+                    print("[HISTORY - FREE 1/3] → Groq Compound")
                     res = execute_openai_call(client_groq, model_1, ctx)
                     return jsonify(clean_and_parse_json(res))
                 except Exception as e:
-                    print(f"Ã‰chec {model_1} ({e})")
+                    print(f"Échec {model_1} ({e})")
                     lock_model(model_1)
 
             model_2 = "moonshotai/kimi-k2.6"
             if client_nvidia and not is_model_locked(model_2):
                 try:
-                    print("[HISTORY - FREE 2/3] â†’ Kimi K2.6 (NVIDIA)")
+                    print("[HISTORY - FREE 2/3] → Kimi K2.6 (NVIDIA)")
                     res = execute_openai_call(client_nvidia, model_2, ctx)
                     return jsonify(clean_and_parse_json(res))
                 except Exception as e:
-                    print(f"Ã‰chec {model_2} ({e})")
+                    print(f"Échec {model_2} ({e})")
                     lock_model(model_2)
 
             if client_gemini_paid and not is_model_locked("gemini-2.5-flash-lite-history"):
                 try:
-                    print("[HISTORY - FREE 3/3 FILET] â†’ Gemini 2.5 Flash-Lite (PAID KEY)")
+                    print("[HISTORY - FREE 3/3 FILET] → Gemini 2.5 Flash-Lite (PAID KEY)")
                     r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                     increment_failover_count()
                     return jsonify(clean_and_parse_json(r.text))
                 except Exception as e:
-                    print(f"Ã‰chec Filet Payant History ({e})")
+                    print(f"Échec Filet Payant History ({e})")
                     lock_model("gemini-2.5-flash-lite-history")
 
-            return jsonify({"action": None, "response": "Module d'historique saturÃ©, redonne-moi une seconde ! ðŸ˜Ž"})
+            return jsonify({"action": None, "response": "Module d'historique saturé, redonne-moi une seconde ! 😎"})
 
         else:
             try:
-                print("[HISTORY - PAID] â†’ Gemini 2.5 Flash-Lite (PAID KEY)")
+                print("[HISTORY - PAID] → Gemini 2.5 Flash-Lite (PAID KEY)")
                 r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                 return jsonify(clean_and_parse_json(r.text))
             except Exception as e:
-                print(f"Ã‰chec Paid History: {e}")
+                print(f"Échec Paid History: {e}")
                 r = execute_gemini_call(client_gemini_paid, "gemini-2.5-flash-lite", ctx)
                 return jsonify(clean_and_parse_json(r.text))
 
     except Exception as e:
         print(f"Erreur critique /history : {e}")
-        return jsonify({"action": None, "response": "Historique instable, rÃ©essaie !"}), 500
+        return jsonify({"action": None, "response": "Historique instable, réessaie !"}), 500
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"ðŸ”¥ Serveur Multi-Cascades branchÃ© et synchronisÃ© sur le port {port}...")
+    print(f"🔥 Serveur Multi-Cascades branché et synchronisé sur le port {port}...")
     app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
