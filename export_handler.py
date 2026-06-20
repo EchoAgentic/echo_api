@@ -251,4 +251,5 @@ def handle_file_download(format_type: str, title: str, content: str):
 
     except Exception as e:
         print(f"❌ [EXPORT ERROR] Échec de la génération {format_type} : {e}")
-        return jsonify({"error": f"Impossible de générer le fichier : {str(e)}"}), 500
+        return jsonify({"error": f"Impossible de générer le fichier : {str(e)}"}), 500#   e x p o r t   h a n d l e r  
+ 
