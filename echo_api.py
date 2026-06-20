@@ -11,7 +11,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 from prompts import generate_system_prompt
-from export_handler import handle_export
+from export_handler import handle_file_download as handle_export
 
 load_dotenv()
 
